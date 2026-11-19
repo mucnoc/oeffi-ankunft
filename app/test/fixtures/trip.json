@@ -1,0 +1,13 @@
+{
+  "legs": [
+    {"mode": "BUS", "routeShortName": "42", "displayName": "42", "realTime": true, "cancelled": false, "tripId": "T42-0705",
+     "from": {"name": "Anfang", "stopId": "test_anfang", "scheduledDeparture": "2026-11-20T05:50:00Z", "departure": "2026-11-20T05:51:00Z", "cancelled": false},
+     "intermediateStops": [
+       {"name": "Musterdorf", "stopId": "test_musterdorf", "scheduledArrival": "2026-11-20T06:05:00Z", "arrival": "2026-11-20T06:07:00Z",
+        "scheduledDeparture": "2026-11-20T06:05:00Z", "departure": "2026-11-20T06:07:00Z", "cancelled": false},
+       {"name": "Beispielstadt, Markt", "stopId": "test_markt", "scheduledArrival": "2026-11-20T06:40:00Z", "arrival": "2026-11-20T06:43:00Z",
+        "scheduledDeparture": "2026-11-20T06:40:00Z", "departure": "2026-11-20T06:43:00Z", "cancelled": false}
+     ],
+     "to": {"name": "Beispielstadt, Bahnhof", "stopId": "test_bahnhof", "scheduledArrival": "2026-11-20T06:50:00Z", "arrival": "2026-11-20T06:53:00Z", "cancelled": false}}
+  ]
+}

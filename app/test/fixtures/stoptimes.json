@@ -1,0 +1,14 @@
+{
+  "place": {"name": "Musterdorf", "stopId": "test_musterdorf"},
+  "stopTimes": [
+    {"mode": "BUS", "routeShortName": "7", "displayName": "7", "realTime": false, "cancelled": false, "tripCancelled": false,
+     "tripId": "T7", "headsign": "Nachbarort",
+     "place": {"name": "Musterdorf", "stopId": "test_musterdorf", "scheduledDeparture": "2026-11-20T06:05:00Z", "departure": "2026-11-20T06:05:00Z"}},
+    {"mode": "BUS", "routeShortName": "42", "displayName": "42", "realTime": true, "cancelled": false, "tripCancelled": false,
+     "tripId": "T42-0705", "headsign": "Beispielstadt",
+     "place": {"name": "Musterdorf", "stopId": "test_musterdorf", "scheduledDeparture": "2026-11-20T06:05:00Z", "departure": "2026-11-20T06:07:00Z"}},
+    {"mode": "BUS", "routeShortName": "42", "displayName": "42", "realTime": false, "cancelled": false, "tripCancelled": false,
+     "tripId": "T42-0735", "headsign": "Beispielstadt",
+     "place": {"name": "Musterdorf", "stopId": "test_musterdorf", "scheduledDeparture": "2026-11-20T06:35:00Z", "departure": "2026-11-20T06:35:00Z"}}
+  ]
+}

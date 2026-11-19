@@ -1,0 +1,11 @@
+{
+  "watches": [
+    {
+      "title": "Pendelweg",
+      "stop_id": "de-DELFI_de:00000:000000::00000000",
+      "line": "42",
+      "departure": "07:05",
+      "target": "Beispielstadt, Markt"
+    }
+  ]
+}
