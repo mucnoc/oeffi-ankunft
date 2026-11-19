@@ -21,6 +21,7 @@ nur `v5/stoptimes` und `v5/trip`, je Fahrt höchstens alle 10 Minuten und nur im
 - `line`, `departure`: Linie und geplante Abfahrt (Ortszeit Europe/Berlin) der Fahrt.
 - `target`: Name der Zielhaltestelle, genau wie im Fahrtverlauf bei Transitous.
 - optional: `title`, `weekdays` (0 = Montag, Standard Mo–Fr), `show_from`/`show_until` (Standard 06:30–12:00).
+  Das Fenster liegt innerhalb eines Tages; Fahrten über Mitternacht gehen nicht.
 
 **Rückfahrt nach einem Ende (etwa Arbeitsende):** statt `departure` eine Liste `departures` und `earliest`:
 

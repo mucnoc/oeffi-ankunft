@@ -202,6 +202,7 @@ class Tracker:
         for i, watch in enumerate(self.watches):
             with self._lock:
                 d = self._state(i, now)
+            # last_query, done, cancelled, earliest, searched schreibt nur dieser Faden, snapshot() liest sie nicht
             if not self._active(watch, now) or d.done:
                 continue
             if d.last_query is not None and (now - d.last_query).total_seconds() < POLL_SECONDS:
@@ -218,7 +219,8 @@ class Tracker:
                     traceback.print_exc()
                 with self._lock:
                     d.fails += 1
-                    d.error = str(e) or type(e).__name__
+                    # Unerwartetes nur mit seinem Typ: der Text käme sonst auf die freie Seite
+                    d.error = (str(e) or type(e).__name__) if isinstance(e, TransitousError) else type(e).__name__
                 self._log("Abfrage für %s gescheitert (%s)" % (watch.line, d.error))
         if self._pending:
             self._send_pending(now)

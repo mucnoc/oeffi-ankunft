@@ -14,6 +14,7 @@ API:
 """
 import argparse
 import json
+import socket
 import os
 import sys
 import threading
@@ -85,7 +86,7 @@ def make_notifier(cfg, post=post_json, log=log_stderr):
         body = json.dumps({"text": text, "source": cfg["source"]}, ensure_ascii=False).encode("utf-8")
         try:
             status = post(cfg["url"], body)
-        except TimeoutError:
+        except (TimeoutError, socket.timeout):  # unter Python 3.9 ist socket.timeout kein TimeoutError
             log("Meldung vielleicht zugestellt (Zeitüberschreitung), wird nicht wiederholt")
             return True
         except OSError as e:

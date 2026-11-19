@@ -86,6 +86,11 @@ class HttpTest(unittest.TestCase):
             raise TimeoutError()
         self.assertTrue(make_notifier({"url": "http://x", "source": "s"}, post=slow, log=lambda line: None)("x"))
 
+        def slow_old(url, body):
+            import socket
+            raise socket.timeout("timed out")  # Python 3.9: kein TimeoutError
+        self.assertTrue(make_notifier({"url": "http://x", "source": "s"}, post=slow, log=lambda line: None)("x"))
+
     def test_main_parts_with_notify(self):
         base = tempfile.mkdtemp()
         self.addCleanup(shutil.rmtree, base, ignore_errors=True)

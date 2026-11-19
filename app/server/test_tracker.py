@@ -182,6 +182,15 @@ class TrackerTest(unittest.TestCase):
         self.assertEqual(t.snapshot()["trips"][0]["state"], "planned")
         self.assertEqual([k for c, k in api.calls if c >= Clock(23, "00:00")()], ["search", "trip"])
 
+    def test_unexpected_error_shows_only_its_type(self):
+        clock = Clock(20, "06:30")
+
+        def broken(url):
+            raise ValueError("interne Einzelheit /pfad")
+        t = Tracker([WATCH], broken, clock=clock, tz=TZ, log=lambda line: None)
+        run(t, clock, 20, "06:30", "06:50")
+        self.assertEqual(t.snapshot()["trips"][0]["error"], "ValueError")
+
     def test_tick_survives_unexpected_error(self):
         clock = Clock(20, "06:30")
 
