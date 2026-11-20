@@ -47,8 +47,15 @@ def _utc(dt):
 
 
 def find_trip(get, watch, day, tz, departure=None):
-    """Fahrt mit Linie watch.line und geplanter Abfahrt departure (sonst watch.departure; Ortszeit, am Tag day) an watch.stop_id:
-    {"tripId", "mode", "line", "stopId" (Haltestelle/Steig der Abfahrt)} oder None."""
+    """Erste Fahrt aus find_trips oder None."""
+    trips = find_trips(get, watch, day, tz, departure)
+    return trips[0] if trips else None
+
+
+def find_trips(get, watch, day, tz, departure=None):
+    """Fahrten mit Linie watch.line und geplanter Abfahrt departure (sonst watch.departure; Ortszeit, am Tag day) an
+    watch.stop_id, je {"tripId", "mode", "line", "stopId" (Haltestelle/Steig der Abfahrt)}. Mehrere, wenn zur selben
+    Minute Busse derselben Linie in verschiedene Richtungen fahren."""
     hour, minute = (int(x) for x in (departure or watch.departure).split(":"))
     planned = datetime(day.year, day.month, day.day, hour, minute, tzinfo=tz)
     url = BASE + "v5/stoptimes?" + urlencode({"stopId": watch.stop_id, "time": _utc(planned - SEARCH_BEFORE), "n": 20})
@@ -56,6 +63,7 @@ def find_trip(get, watch, day, tz, departure=None):
     stop_times = data.get("stopTimes") if isinstance(data, dict) else None
     if not isinstance(stop_times, list) or not all(isinstance(st, dict) for st in stop_times):
         raise TransitousError("bad_payload (stopTimes)")
+    found = []
     for st in stop_times:
         line = st.get("routeShortName") or st.get("displayName")
         if line != watch.line:
@@ -64,11 +72,11 @@ def find_trip(get, watch, day, tz, departure=None):
             place = st["place"]
             if _time(place["scheduledDeparture"]) == planned:
                 # Die Abfahrt steht oft an einem Steig mit eigener ID unter der konfigurierten Station
-                return {"tripId": st["tripId"], "mode": st.get("mode"), "line": line,
-                        "stopId": place.get("stopId") or watch.stop_id}
+                found.append({"tripId": st["tripId"], "mode": st.get("mode"), "line": line,
+                              "stopId": place.get("stopId") or watch.stop_id})
         except (KeyError, TypeError, AttributeError, ValueError):
             continue  # unvollständiger Eintrag: die anderen zählen trotzdem
-    return None
+    return found
 
 
 def _stop(place, scheduled_key, key):

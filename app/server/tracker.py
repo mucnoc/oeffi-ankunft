@@ -1,6 +1,6 @@
 """Takt: Für jede beobachtete Fahrt (config.Watch) am passenden Wochentag im Zeitfenster bei Transitous nachsehen.
 
-- Ab show_from die Fahrt suchen (find_trip), danach ihren Verlauf abfragen (trip_status), je Fahrt höchstens alle
+- Ab show_from die Fahrt suchen (find_trips; mehrere zur selben Minute: die mit dem Ziel), danach ihren Verlauf abfragen (trip_status), je Fahrt höchstens alle
   POLL_SECONDS. Fertig (keine Abfragen mehr bis zum nächsten Tag), wenn die Fahrt ausfällt, mit Echtzeit die erwartete
   Ankunft DONE_AFTER_ARRIVAL vorbei ist oder die geplante Ankunft GIVE_UP_AFTER vorbei ist.
 - Keine Fahrt gefunden (Wochenende, Feiertag): weiter suchen bis Abfahrt + GIVE_UP_AFTER, dann für heute „none“ (unsichtbar).
@@ -27,7 +27,7 @@ import traceback
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from transitous import TransitousError, find_trip, trip_status
+from transitous import TransitousError, find_trips, trip_status
 
 POLL_SECONDS = 600
 DONE_AFTER_ARRIVAL = 120
@@ -266,17 +266,27 @@ class Tracker:
             if d.searched and now < departure - timedelta(seconds=LEAD_SECONDS):
                 return  # schon einmal ohne Treffer gesucht: erst kurz vor der Abfahrt wieder
             d.searched = True
-            trip = find_trip(self._get, watch, now.date(), self._tz, departure=chosen)
-            if trip is None:
+            trips = find_trips(self._get, watch, now.date(), self._tz, departure=chosen)
+            if not trips:
                 with self._lock:
                     d.fails, d.error = 0, None
                     if now >= departure + timedelta(seconds=GIVE_UP_AFTER):
                         d.none = d.done = True
                 return
+            # Fahren zur selben Minute mehrere Busse der Linie, zählt der, der das Ziel nach der Abfahrt anfährt
+            for n, trip in enumerate(trips):
+                try:
+                    status = trip_status(self._get, trip["tripId"], trip.get("stopId") or watch.stop_id,
+                                         watch.target, self._tz)
+                    break
+                except TransitousError as e:
+                    if str(e) != "target_not_on_trip" or n == len(trips) - 1:
+                        raise
             with self._lock:
                 d.trip = trip
-        stop_id = d.trip.get("stopId") or watch.stop_id
-        status = trip_status(self._get, d.trip["tripId"], stop_id, watch.target, self._tz)
+        else:
+            stop_id = d.trip.get("stopId") or watch.stop_id
+            status = trip_status(self._get, d.trip["tripId"], stop_id, watch.target, self._tz)
         arrival = status["to"]
         # Ein Ausfall beendet einen Eintrag mit earliest nicht, solange ein späterer Bus in Frage kommt (auch bei einer
         # Absage in letzter Minute) oder sich das Ende vor der Abfahrt noch ändern kann

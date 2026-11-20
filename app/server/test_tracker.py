@@ -233,6 +233,7 @@ class FakeReturn:
         self.skip = False
         self.no_trips = False
         self.fail_trip = False
+        self.twin = False  # zweiter Bus derselben Linie und Minute in die andere Richtung, steht zuerst
         self.calls = []
 
     def now(self):
@@ -250,12 +251,22 @@ class FakeReturn:
             return {"date": "2026-11-%02d" % (d + self.date_shift), "end": self.end}
         if "stoptimes" in url:
             self.calls.append((self.clock(), "search"))
-            return {"stopTimes": [] if self.no_trips else [
+            twin = [{"mode": "BUS", "routeShortName": "42", "tripId": "X" + dep,
+                     "place": {"stopId": "test_markt", "scheduledDeparture": z(d, dep)}} for dep in ARRIVALS] if self.twin else []
+            return {"stopTimes": [] if self.no_trips else twin + [
                 {"mode": "BUS", "routeShortName": "42", "tripId": "T" + dep,
                  "place": {"stopId": "test_markt", "scheduledDeparture": z(d, dep)}} for dep in ARRIVALS]}
         self.calls.append((self.clock(), "trip"))
         if self.fail_trip:
             raise TransitousError("target_not_on_trip")
+        if "tripId=X" in url:
+            dep = url.rsplit("X", 1)[-1].replace("%3A", ":")
+            return {"legs": [{"mode": "BUS", "routeShortName": "42", "realTime": True, "cancelled": False,
+                              "from": {"name": "Beispielstadt, Markt", "stopId": "test_markt",
+                                       "scheduledDeparture": z(d, dep), "departure": z(d, dep)},
+                              "intermediateStops": [],
+                              "to": {"name": "Anderswo", "stopId": "x", "scheduledArrival": z(d, dep),
+                                     "arrival": z(d, dep)}}]}
         dep = url.rsplit("T", 1)[-1].replace("%3A", ":")
         arr = ARRIVALS[dep]
         h, m = (int(x) for x in arr.split(":"))
@@ -293,6 +304,15 @@ class ReturnTripTest(unittest.TestCase):
         t, api, clock = self.make("13:35")
         run(t, clock, 20, "11:00", "11:00")
         self.assertEqual(self.trip(t)["from"]["scheduled"], "13:50")
+
+    def test_two_buses_same_minute_takes_the_one_to_the_target(self):
+        t, api, clock = self.make("13:35")
+        api.twin = True
+        run(t, clock, 20, "11:00", "11:00")
+        trip = self.trip(t)
+        self.assertIsNotNone(trip)
+        self.assertEqual((trip["from"]["scheduled"], trip["to"]["name"], trip["to"]["scheduled"], trip["error"]),
+                         ("13:50", "Musterdorf", "14:25", None))
 
     def test_gap_skips_a_bus_too_close(self):
         t, api, clock = self.make("11:45")  # 11:50 ist zu knapp, 12:10 passt
