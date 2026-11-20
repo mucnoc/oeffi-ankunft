@@ -1,7 +1,8 @@
 // Kachel für die lan-pi-Startseite (https://github.com/mucnoc/oeffi-ankunft). Die Startseite lädt diese Datei und ruft
 // LanPiSummary.oeffi() auf. Andere Seiten können api/status direkt lesen.
 //
-// Die erste noch nicht angekommene Fahrt (sonst die zuletzt angekommene) bestimmt Zahl und Abzeichen, jede Fahrt hat
+// Die erste noch nicht angekommene Fahrt (sonst die zuletzt angekommene) bestimmt Zahl und Abzeichen: vor der Abfahrt
+// (planned) die Abfahrtszeit, danach die Ankunftszeit. Jede Fahrt hat
 // eine Zeile mit ihrem Titel; dieselbe Fahrt zweier Einträge steht einmal da. Ohne Fahrt im Zeitfenster: hidden.
 // Ergebnis: { hidden, figure, figureLabel, tone, badge, meta: [Text], fresh, compact, wide, priority, todos, backup }
 (function () {
@@ -21,7 +22,8 @@
     switch (t.state) {
       case 'arrived': return { text: t.delay > 0 ? 'angekommen +' + t.delay : 'angekommen pünktlich', tone: late || 'ok' };
       case 'underway': return { text: 'unterwegs' + plus(t.delay), tone: late };
-      case 'planned': return { text: 'geplant' + plus(t.delay), tone: late };
+      // vor der Abfahrt zählt die Verspätung der Abfahrt, die groß dasteht
+      case 'planned': return { text: 'geplant' + plus(t.departDelay), tone: t.departDelay >= LATE ? 'warn' : null };
       case 'no_realtime': return { text: 'laut Plan', tone: null };
       case 'cancelled': return { text: 'fällt aus', tone: 'bad' };
       default: return { text: 'keine Daten', tone: 'warn' };
@@ -36,8 +38,14 @@
     return t.title ? t.title + ': ' : '';
   }
 
+  function delayed(time, n) {
+    return time + (n > 0 ? ' (+' + n + ')' : '');
+  }
+
   function line(t, short) {
     if (!t.from.name) return prefix(t) + name(t) + ', keine Daten';
+    // nur eine Fahrt und noch nicht abgefahren: die Abfahrt steht groß da, die Zeile nennt die Ankunft
+    if (short && t.state === 'planned') return prefix(t) + name(t) + ' · an ' + t.to.name + ' ' + delayed(t.to.scheduled, t.delay);
     const start = prefix(t) + name(t) + ' ab ' + t.from.name + ' ' + t.from.scheduled + (t.departDelay > 0 ? ' (+' + t.departDelay + ')' : '');
     if (short) return start;
     return start + ' · an ' + t.to.name + ' ' + (t.to.expected || t.to.scheduled) + ' · ' + badge(t).text;
@@ -77,10 +85,12 @@
     const base = { compact: false, wide: true, priority: true, todos: [], backup: null, tone: null };
     if (!trips.length) return Object.assign(base, { hidden: true, figure: null, figureLabel: '', badge: null, meta: [], fresh: null });
     const first = main(trips);
+    const before = first.state === 'planned';
+    const end = before ? first.from : first.to;
     return Object.assign(base, {
       hidden: false,
-      figure: first.state === 'cancelled' ? null : first.to.expected || first.to.scheduled || null,
-      figureLabel: (first.title ? first.title + ' · ' : '') + 'an ' + first.to.name,
+      figure: first.state === 'cancelled' ? null : end.expected || end.scheduled || null,
+      figureLabel: (first.title ? first.title + ' · ' : '') + (before ? 'ab ' : 'an ') + end.name,
       badge: badge(first),
       meta: trips.map((t) => line(t, trips.length === 1)),
       fresh: { text: first.checked ? 'Stand ' + first.checked : 'noch nicht abgefragt', tone: null },

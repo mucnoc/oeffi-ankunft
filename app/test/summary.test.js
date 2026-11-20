@@ -58,8 +58,8 @@ test('Abzeichen je Zustand', async () => {
     [{ state: 'underway', delay: 2 }, { text: 'unterwegs +2', tone: null }],
     [{ state: 'underway', delay: 0 }, { text: 'unterwegs', tone: null }],
     [{ state: 'underway', delay: 7 }, { text: 'unterwegs +7', tone: 'warn' }],
-    [{ state: 'planned', delay: 0 }, { text: 'geplant', tone: null }],
-    [{ state: 'planned', delay: 5 }, { text: 'geplant +5', tone: 'warn' }],
+    [{ state: 'planned', delay: 7, departDelay: 0 }, { text: 'geplant', tone: null }],
+    [{ state: 'planned', delay: 0, departDelay: 5 }, { text: 'geplant +5', tone: 'warn' }],
     [{ state: 'no_realtime' }, { text: 'laut Plan', tone: null }],
     [{ state: 'cancelled' }, { text: 'fällt aus', tone: 'bad' }],
     [{ state: 'unreachable' }, { text: 'keine Daten', tone: 'warn' }],
@@ -113,8 +113,8 @@ test('gleiche Fahrt für zwei Einträge: eine Zeile mit beiden Titeln', async ()
 
 test('große Zahl: erste noch nicht angekommene Fahrt, sonst die zuletzt angekommene', async () => {
   let s = plain(await load(status(back('A', '11:50', '12:25'), back('B', '13:50', '14:25', { state: 'planned' })))());
-  assert.equal(s.figure, '14:25');
-  assert.equal(s.figureLabel, 'B · an Musterdorf');
+  assert.equal(s.figure, '13:50');
+  assert.equal(s.figureLabel, 'B · ab Beispielstadt, Markt');
   assert.deepEqual(s.badge, { text: 'geplant', tone: null });
   assert.deepEqual(s.meta, ['A: Bus 42 ab Beispielstadt, Markt 11:50 · an Musterdorf 12:25 · angekommen pünktlich',
     'B: Bus 42 ab Beispielstadt, Markt 13:50 · an Musterdorf 14:25 · geplant']);
@@ -132,7 +132,7 @@ test('nach Zeit, nicht nach Reihenfolge der Konfiguration', async () => {
   assert.equal(s.figureLabel, 'A · an Musterdorf');
   s = plain(await load(status(back('A', '11:50', '12:25', { state: 'unreachable', from: { name: null, scheduled: null, expected: null },
     to: { name: 'Musterdorf', scheduled: null, expected: null } }), back('B', '13:50', '14:25', { state: 'planned' })))());
-  assert.equal(s.figure, '14:25');
+  assert.equal(s.figure, '13:50');
 });
 
 test('ohne Titel keine Vorsilbe', async () => {
@@ -147,4 +147,21 @@ test('Server meldet Fehler: Kachel wirft', async () => {
 
 test('Server ohne Konfiguration: versteckt', async () => {
   assert.equal(plain(await load({ now: '07:00', trips: [], error: 'no_config' })()).hidden, true);
+});
+
+test('vor der Abfahrt: Abfahrtszeit groß, Ankunft in der Zeile darunter', async () => {
+  const s = plain(await load(status(trip({ state: 'planned', delay: 1, departDelay: 1, checked: '06:30',
+    from: { name: 'Musterdorf', scheduled: '07:05', expected: '07:06' },
+    to: { name: 'Beispielstadt, Markt', scheduled: '07:40', expected: '07:41' } })))());
+  assert.equal(s.figure, '07:06');
+  assert.equal(s.figureLabel, 'Pendelweg · ab Musterdorf');
+  assert.deepEqual(s.badge, { text: 'geplant +1', tone: null });
+  assert.deepEqual(s.meta, ['Pendelweg: Bus 42 · an Beispielstadt, Markt 07:40 (+1)']);
+});
+
+test('nach der Abfahrt wieder die Ankunft groß', async () => {
+  const s = plain(await load(status(trip({ state: 'underway' })))());
+  assert.equal(s.figure, '07:43');
+  assert.equal(s.figureLabel, 'Pendelweg · an Beispielstadt, Markt');
+  assert.deepEqual(s.meta, ['Pendelweg: Bus 42 ab Musterdorf 07:05 (+2)']);
 });
